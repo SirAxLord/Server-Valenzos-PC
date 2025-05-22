@@ -46,7 +46,7 @@ const login = async (req = request, res = response) => {
 }
 
 const register = async (req = request, res = response) => {
-    const {  username, password } = req.body ?? "";
+    const {  username, password, role } = req.body ?? ""; 
 
     if(!username || !password){
         res.status(400).json({
@@ -67,9 +67,15 @@ const register = async (req = request, res = response) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({
             username: username,
-            password: hashedPassword, 
-            role: "user"
+            password: hashedPassword,
         });
+
+        const allowedRoles = ['user', 'admin'];
+        if (role && allowedRoles.includes(role)) {
+            newUser.role = role; 
+        } else if (role) {
+            console.warn(`Rol inválido '${role}' proporcionado. Se usará el rol por defecto.`);
+        }
 
         await newUser.save();
         res.status(200).json({
