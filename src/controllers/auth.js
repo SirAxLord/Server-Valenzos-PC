@@ -1,6 +1,7 @@
 const { response, request } = require("express");
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const login = async (req = request, res = response) => {
     const {  username, password } = req.body ?? "";
@@ -30,11 +31,24 @@ const login = async (req = request, res = response) => {
         return;
     }
 
-    //generar JWToken
-
-    res.status(200).json({
-        msg: "Login exitoso",
-        // token: token
+    jwt.sign({
+        username: user.username,
+        role: user.role
+    }, process.env.SECRET_KEY, {
+        expiresIn: "4h"
+    }, (error, token) => {
+        if(error){
+            console.log(error);
+            res.status(500).json({
+                msg: "Error en el servidor"
+            })
+            return;
+        } else {
+            res.status(200).json({
+                msg: "Login exitoso",
+                token
+            });
+        }
     })
     } catch (error) {
         console.log(error);
