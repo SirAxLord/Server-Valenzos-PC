@@ -1,6 +1,7 @@
 const { response, request } = require("express");
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const login = async (req = request, res = response) => {
     const {  username, password } = req.body ?? "";
@@ -30,11 +31,24 @@ const login = async (req = request, res = response) => {
         return;
     }
 
-    //generar JWToken
-
-    res.status(200).json({
-        msg: "Login exitoso",
-        // token: token
+    jwt.sign({
+        username: user.username,
+        role: user.role
+    }, process.env.SECRET_KEY, {
+        expiresIn: "4h"
+    }, (error, token) => {
+        if(error){
+            console.log(error);
+            res.status(500).json({
+                msg: "Error en el servidor"
+            })
+            return;
+        } else {
+            res.status(200).json({
+                msg: "Login exitoso",
+                token
+            });
+        }
     })
     } catch (error) {
         console.log(error);
@@ -46,7 +60,7 @@ const login = async (req = request, res = response) => {
 }
 
 const register = async (req = request, res = response) => {
-    const {  username, password } = req.body ?? "";
+    const {  username, password, role } = req.body ?? ""; 
 
     if(!username || !password){
         res.status(400).json({
@@ -67,9 +81,15 @@ const register = async (req = request, res = response) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const newUser = new User({
             username: username,
-            password: hashedPassword, 
-            role: "user"
+            password: hashedPassword,
         });
+
+        const allowedRoles = ['user', 'admin'];
+        if (role && allowedRoles.includes(role)) {
+            newUser.role = role; 
+        } else if (role) {
+            console.warn(`Rol inválido '${role}' proporcionado. Se usará el rol por defecto.`);
+        }
 
         await newUser.save();
         res.status(200).json({
